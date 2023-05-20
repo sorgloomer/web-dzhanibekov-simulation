@@ -1,0 +1,6 @@
+.npmrc
+.idea/
+lib/
+obj/
+bin/
+node_modules/

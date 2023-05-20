@@ -1,0 +1,15 @@
+﻿@page "/"
+@using DotnetPhysics.namespaces.Simulation
+
+@inject IJSRuntime JSRuntime
+
+@code {
+
+
+  [JSInvokable]
+  public static object CreateSimulation(SimulationOptions options)
+  {
+    var simulation = new PrecessionSimulation(options);
+    return DotNetObjectReference.Create(simulation);
+  }
+}
