@@ -1,6 +1,6 @@
 import { createEngine, SimulationTimer } from "./engines.js";
 import { Gui } from "./gui.js";
-import { AbsoluteCounter, lerp, RAD_TO_DEG, RelativeCounter, sleep } from "./utils.js";
+import { AbsoluteCounter, curveExp, lerp, RAD_TO_DEG, RelativeCounter, sleep } from "./utils.js";
 import {
   animationFrames,
   Dragger,
@@ -89,54 +89,58 @@ async function main({
     canvas: document.querySelector("#main-canvas"),
     canvasWrapper: document.querySelector("main"),
   });
+  function syncOptions() {
+    visuals.ellipseL.visible = gui.model.showEllipsoids;
+    visuals.ellipseE.visible = gui.model.showEllipsoids;
+    visuals.axes.visible = gui.model.showAxes;
+    visuals.axes.visible = gui.model.showAxes;
+    visuals.vectors.visible = gui.model.showVectors;
+    visuals.vectors.visible = gui.model.showVectors;
+    simulationTimer.unlocked = gui.model.benchmark;
+  }
   const gui = new Gui({
     parentDomElement: document.querySelector("#panel-options"),
     listeners: {
-      initialAngle: () => { recreateSimulation().catch(console.error); },
+      stability: () => { recreateSimulation().catch(console.error); },
       engine: () => { recreateSimulation().catch(console.error); },
-      showEllipsoids: ({ newValue }) => {
-        visuals.ellipseL.visible = newValue;
-        visuals.ellipseE.visible = newValue;
-      },
-      showAxes: ({ newValue }) => {
-        visuals.axes.visible = newValue;
-      },
-      showVectors: ({ newValue }) => {
-        visuals.vectors.visible = newValue;
-      },
-      benchmark: ({ newValue }) => {
-        simulationTimer.unlocked = newValue;
-      },
+      showEllipsoids: () => { syncOptions(); },
+      showAxes: () => { syncOptions(); },
+      showVectors: () => { syncOptions(); },
+      benchmark: () => { syncOptions(); },
     },
   });
 
+  function calculateInitialAngle(stability) {
+    if (stability === 0) {
+      return 0;
+    }
+    if (stability < 0.3) {
+      return Math.pow(10, stability / 0.3 * 7) * 1e-8;
+    }
+    return lerp(0.1, Math.PI / 2, (stability - 0.3) / 0.7);
+  }
   async function recreateSimulation() {
     if (simulation !== undefined) {
       simulation.destroy();
     }
-    simulation = await createEngineWithCurrentParams();
-    simulationTimer.implementation = simulation;
-    visuals.ellipseL.scale.copy(simulation.EllipseL).multiplyScalar(MomentScale);
-    visuals.ellipseE.scale.copy(simulation.EllipseE).multiplyScalar(MomentScale);
-    visuals.arrowAngularMomentum.update({
-      target: vec3().copy(simulation.AngularMomentum).multiplyScalar(MomentScale),
-    });
-  }
-  function curveExp(base, t) {
-    return (Math.pow(base, t) - 1) / (base - 1);
-  }
-  async function createEngineWithCurrentParams() {
-    const initialAngle = lerp(2e-8, Math.PI / 2, curveExp(100, gui.model.initialAngle / 100));
-    return await createEngine({
+    const initialAngle = calculateInitialAngle(gui.model.stability / 100);
+    simulation = await createEngine({
       engine: gui.model.engine,
       params: {
-        dt: 5e-6,
+        dt: 2e-5,
         correctionMaxIterations: 30,
         correctionErrorThreshold: 1e-22,
         initialAngle,
         stepsBetweenTimechecks: 100,
       },
     });
+    simulationTimer.implementation = simulation;
+    visuals.ellipseL.scale.copy(simulation.EllipseL).multiplyScalar(MomentScale);
+    visuals.ellipseE.scale.copy(simulation.EllipseE).multiplyScalar(MomentScale);
+    visuals.arrowAngularMomentum.update({
+      target: vec3().copy(simulation.AngularMomentum).multiplyScalar(MomentScale),
+    });
+    syncOptions();
   }
 
   let simulation = undefined;
@@ -158,11 +162,12 @@ async function main({
     fpsCounter.flush();
     stepCounter.flush(simulationTimer.stepCounter);
     const infopanel = document.getElementById("panel-info");
-    infopanel.textContent = `fps: ${fpsCounter.rate} /s\n`
-      +`E: ${(simulation.CurrentRotationalEnergy * 1000).toFixed(1)} mJ\n`
-      +`E₀: ${(simulation.RotationalEnergy * 1000).toFixed(1)} mJ\n`
-      +`iter: ${stepCounter.rate.toExponential(3)} /s\n`
-      +`φ₀: ${(simulation.InitialAngle * RAD_TO_DEG).toPrecision(3)}°\n`
+    infopanel.textContent = ''
+      + `render fps: ${fpsCounter.rate} /s\n`
+      + `   sim fps: ${stepCounter.rate.toExponential(3)} /s\n`
+      + `         E: ${(simulation.CurrentRotationalEnergy * 1000).toFixed(1)} mJ\n`
+      + `        E₀: ${(simulation.RotationalEnergy * 1000).toFixed(1)} mJ\n`
+      + `        φ₀: ${(simulation.InitialAngle * RAD_TO_DEG).toPrecision(3)}°\n`
     ;
   }
 

@@ -90,3 +90,6 @@ export function lerp(min, max, t) {
 }
 
 export const RAD_TO_DEG = 180 / Math.PI;
+export function curveExp(base, t) {
+  return (Math.pow(base, t) - 1) / (base - 1);
+}
