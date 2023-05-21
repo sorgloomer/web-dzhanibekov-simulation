@@ -84,3 +84,9 @@ export function interUnit(x) {
     return x.toPrecision(3);
   }
 }
+
+export function lerp(min, max, t) {
+  return min + (max - min) * t;
+}
+
+export const RAD_TO_DEG = 180 / Math.PI;

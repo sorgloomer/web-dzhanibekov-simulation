@@ -4,7 +4,7 @@ export const rx = window.rxjs;
 export class VisualsBase {
   constructor({
     canvas,
-    canvaswrapper,
+    canvasWrapper,
     autoinit = true,
     resizeThrottle = 50,
   }) {
@@ -21,7 +21,7 @@ export class VisualsBase {
 
     this.scene = scene;
     this.canvas = canvas;
-    this.canvaswrapper = canvaswrapper;
+    this.canvasWrapper = canvasWrapper;
     this.camera = camera;
     this.renderer = renderer;
     this._sResize = undefined;
@@ -53,7 +53,7 @@ export class VisualsBase {
 
   updateCanvasResolution() {
     const { canvas, renderer, camera } = this;
-    const { offsetWidth: width, offsetHeight: height } = this.canvaswrapper;
+    const { offsetWidth: width, offsetHeight: height } = this.canvasWrapper;
     canvas.width = width;
     canvas.height = height;
     renderer.setSize(width, height);
@@ -102,14 +102,17 @@ export class FatArrowFactory {
     };
   }
 
-  add(params) {
+  add({
+    container=this.container,
+    ...params
+  }) {
     const mesh = new FatArrow({
       shaftGeom: this.shaftGeom,
       coneGeom: this.coneGeom,
       ...this.defaults,
       ...params,
     });
-    this.container.add(mesh);
+    container.add(mesh);
     return mesh;
   }
 }

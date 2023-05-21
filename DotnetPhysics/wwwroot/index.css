@@ -20,11 +20,11 @@ main {
   min-height: 0px;
   min-width: 0px;
 }
-.renderlayer {
+.render-layer {
   position: absolute;
 }
 
-#infopanel {
+#panel-menu {
   margin: 5px;
   padding: 5px;
   border: 1px solid black;
@@ -32,4 +32,16 @@ main {
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.65);
   color: black;
+}
+
+#panel-options {
+  margin: 5px 0px 0px 0px;
+}
+
+#panel-info {
+  margin: 0px;
+}
+
+.dg.dg.main .close-button.close-bottom {
+  position: initial;
 }

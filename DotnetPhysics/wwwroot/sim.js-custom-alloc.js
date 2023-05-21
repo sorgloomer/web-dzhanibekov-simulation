@@ -1,9 +1,13 @@
-import { qFromEuler, qFromEulerScale, vec3, vec3o } from "./vectors.alloc.js";
+import { AbstractSimulation } from "./sim.base.js";
 import { sq } from "./utils.js";
+import { qFromEuler, qFromEulerScale, quati, vec3, vec3o } from "./vectors.alloc.js";
 
-export class JsCustomAllocSimulation {
+export class JsCustomAllocSimulation extends AbstractSimulation {
   constructor(params) {
-    this.Angle = qFromEulerScale(vec3(0, 0, 1), params?.initialAngle ?? 2e-8);
+    super();
+    const initialAngle = params?.initialAngle ?? 2e-8;
+    this.Angle = qFromEulerScale(vec3(0, 0, 1), initialAngle, quati());
+    this.InitialAngle = initialAngle;
     this.AngularMomentum = vec3(2, 0, 0);
     this.InertiaTensor = vec3(18, 6, 22).scale(0.02);
     this.AngularVelocity = vec3o();
@@ -40,8 +44,6 @@ export class JsCustomAllocSimulation {
       }
     }
   }
-
-  flush() {}
 
   _initEnergy() {
     const {

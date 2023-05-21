@@ -1,10 +1,10 @@
 import { createEngine, SimulationTimer } from "./engines.js";
-import { AbsoluteCounter, RelativeCounter, sleep } from "./utils.js";
+import { Gui } from "./gui.js";
+import { AbsoluteCounter, lerp, RAD_TO_DEG, RelativeCounter, sleep } from "./utils.js";
 import {
   animationFrames,
   Dragger,
   FatArrowFactory,
-  rx,
   SphereFactory,
   TShape,
   vec2,
@@ -34,16 +34,31 @@ class SimulationVisuals extends VisualsBase {
     this.tshape = new TShape();
 
     const s = 0.06;
-    this.arrows.add({ color: 0xffff80, origin: vec3(-s, -s, -s), target: vec3(-s, s, -s) });
-    this.arrows.add({ color: 0xf0f0f0, origin: vec3(-s, -s, -s), target: vec3(s, -s, -s) });
-    this.arrows.add({ color: 0xf0f0f0, origin: vec3(-s, -s, -s), target: vec3(-s, -s, s) });
+    this.axes = new THREE.Group();
+    this.arrows.add({ container: this.axes, color: 0xffff20, origin: vec3(-s, -s, -s), target: vec3(-s, s, -s) });
+    this.arrows.add({ container: this.axes, color: 0x20ffff, origin: vec3(-s, -s, -s), target: vec3(s, -s, -s) });
+    this.arrows.add({ container: this.axes, color: 0xf0f0f0, origin: vec3(-s, -s, -s), target: vec3(-s, -s, s) });
+
+    this.vectors = new THREE.Group();
+    this.arrowAngularMomentum = this.arrows.add({
+      container: this.vectors,
+      color: 0xe060a0,
+      target: vec3(),
+    });
+    this.arrowAngularVelocity = this.arrows.add({
+      container: this.vectors,
+      color: 0x40f0a0,
+      target: vec3(),
+    });
 
     this.subject = new THREE.Group();
     this.subject.add(this.tshape);
     this.subject.add(this.ellipseE);
     this.subject.add(this.ellipseL);
 
+    this.turntable.add(this.axes);
     this.turntable.add(this.subject);
+    this.turntable.add(this.vectors);
 
     this.scene.add(this.turntable);
 
@@ -62,60 +77,76 @@ async function main({
 }) {
   const mouse = vec2();
 
-  let mode = 'normal';
-
-  new Dragger(window).ondrag.subscribe(p => {
+  new Dragger(
+    document.querySelector("#main-canvas")
+  ).ondrag.subscribe(p => {
     mouse.copy(p).multiplyScalar(2);
   });
 
   const MomentScale = 0.05;
   const S = 0.6;
   const visuals = new SimulationVisuals({
-    canvas: document.querySelector("canvas"),
-    canvaswrapper: document.querySelector("main"),
+    canvas: document.querySelector("#main-canvas"),
+    canvasWrapper: document.querySelector("main"),
   });
-
-  rx.fromEvent(visuals.canvas, 'click').subscribe(e => {
-    switch (mode) {
-      case 'normal':
-        mode = 'fixed';
-        break;
-      case 'fixed':
-      default:
-        mode = 'normal';
-        break;
-    }
-  });
-
-  const simulation = await createEngine({
-    engine,
-    params: {
-      dt: 5e-6,
-      correctionMaxIterations: 30,
-      correctionErrorThreshold: 1e-22,
-      initialAngle: 2e-8,
-      stepsBetweenTimechecks: 100,
+  const gui = new Gui({
+    parentDomElement: document.querySelector("#panel-options"),
+    listeners: {
+      initialAngle: () => { recreateSimulation().catch(console.error); },
+      engine: () => { recreateSimulation().catch(console.error); },
+      showEllipsoids: ({ newValue }) => {
+        visuals.ellipseL.visible = newValue;
+        visuals.ellipseE.visible = newValue;
+      },
+      showAxes: ({ newValue }) => {
+        visuals.axes.visible = newValue;
+      },
+      showVectors: ({ newValue }) => {
+        visuals.vectors.visible = newValue;
+      },
+      benchmark: ({ newValue }) => {
+        simulationTimer.unlocked = newValue;
+      },
     },
   });
+
+  async function recreateSimulation() {
+    if (simulation !== undefined) {
+      simulation.destroy();
+    }
+    simulation = await createEngineWithCurrentParams();
+    simulationTimer.implementation = simulation;
+    visuals.ellipseL.scale.copy(simulation.EllipseL).multiplyScalar(MomentScale);
+    visuals.ellipseE.scale.copy(simulation.EllipseE).multiplyScalar(MomentScale);
+    visuals.arrowAngularMomentum.update({
+      target: vec3().copy(simulation.AngularMomentum).multiplyScalar(MomentScale),
+    });
+  }
+  function curveExp(base, t) {
+    return (Math.pow(base, t) - 1) / (base - 1);
+  }
+  async function createEngineWithCurrentParams() {
+    const initialAngle = lerp(2e-8, Math.PI / 2, curveExp(100, gui.model.initialAngle / 100));
+    return await createEngine({
+      engine: gui.model.engine,
+      params: {
+        dt: 5e-6,
+        correctionMaxIterations: 30,
+        correctionErrorThreshold: 1e-22,
+        initialAngle,
+        stepsBetweenTimechecks: 100,
+      },
+    });
+  }
+
+  let simulation = undefined;
   const simulationTimer = new SimulationTimer({
     implementation: simulation,
     tickCutoffMs: 10,
   });
   api().engine = simulation;
   api().timer = simulationTimer;
-
-  visuals.ellipseL.scale.copy(simulation.EllipseL).multiplyScalar(MomentScale);
-  visuals.ellipseE.scale.copy(simulation.EllipseE).multiplyScalar(MomentScale);
-
-  const arrowAngularMomentum = visuals.arrows.add({
-    color: 0xe060a0,
-    target: vec3().copy(simulation.AngularMomentum).multiplyScalar(MomentScale),
-  });
-  const arrowAngularVelocity = visuals.arrows.add({
-    color: 0x40f0a0,
-    target: vec3(),
-  });
-
+  await recreateSimulation();
 
   const fpsCounter = new RelativeCounter();
   const stepCounter = new AbsoluteCounter();
@@ -126,11 +157,12 @@ async function main({
   function updateInfoPanel() {
     fpsCounter.flush();
     stepCounter.flush(simulationTimer.stepCounter);
-    const infopanel = document.getElementById("infopanel");
+    const infopanel = document.getElementById("panel-info");
     infopanel.textContent = `fps: ${fpsCounter.rate} /s\n`
       +`E: ${(simulation.CurrentRotationalEnergy * 1000).toFixed(1)} mJ\n`
       +`E₀: ${(simulation.RotationalEnergy * 1000).toFixed(1)} mJ\n`
       +`iter: ${stepCounter.rate.toExponential(3)} /s\n`
+      +`φ₀: ${(simulation.InitialAngle * RAD_TO_DEG).toPrecision(3)}°\n`
     ;
   }
 
@@ -148,13 +180,10 @@ async function main({
     simulation.flush();
 
     visuals.subject.quaternion.copy(simulation.Angle);
-    switch (mode) {
-      case "normal":
-        visuals.turntable.quaternion.set(0, 0, 0, 1);
-        break;
-      case "fixed":
-        visuals.turntable.quaternion.copy(visuals.subject.quaternion).invert();
-        break;
+    if (gui.model.pinCamera) {
+      visuals.turntable.quaternion.copy(visuals.subject.quaternion).invert();
+    } else {
+      visuals.turntable.quaternion.set(0, 0, 0, 1);
     }
     const CameraDistance = 0.4 * S;
     visuals.camera.position.set(
@@ -167,8 +196,8 @@ async function main({
     //const CameraAngle = elapsed * CameraAngularVelocity;
     //visuals.camera.position.set(Math.cos(CameraAngle) * CameraDistance, CameraDistance / 2, Math.sin(CameraAngle) * CameraDistance);
     //visuals.camera.lookAt(0, 0, 0);
-    arrowAngularVelocity.update({
-      target: visuals.turntable.localToWorld(arrowAngularVelocity.target.copy(simulation.AngularVelocity).multiplyScalar(0.03)),
+    visuals.arrowAngularVelocity.update({
+      target: visuals.turntable.localToWorld(visuals.arrowAngularVelocity.target.copy(simulation.AngularVelocity).multiplyScalar(0.03)),
     });
 
     visuals.render();

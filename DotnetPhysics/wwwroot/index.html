@@ -6,6 +6,7 @@
   <title>DotnetPhysics</title>
   <base href="/" />
   <link href="css/app.css" rel="stylesheet" />
+  <link href="css/gui.css" rel="stylesheet" />
   <link href="index.css" rel="stylesheet" />
 
   <!-- If you add any scoped CSS files, uncomment the following to load them
@@ -20,8 +21,8 @@
   <a href="" class="reload">Reload</a>
   <a class="dismiss">🗙</a>
 </div>
-<script defer src="_framework/blazor.webassembly.js" autostart="false"></script>
 
+<script defer src="_framework/blazor.webassembly.js" autostart="false"></script>
 <script
   defer
   src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
@@ -36,21 +37,26 @@
   crossorigin="anonymous"
   referrerpolicy="no-referrer"
 ></script>
+<script
+  defer
+  src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.js"
+  integrity="sha512-Mcz+Mt8k23j06ycA5EJGfyXbtzB6xqEoJxjGftQQoed/zQzem9Lt21LRymjlcm+NUsbF0LOHgfdN8LO8GtKDOw=="
+  crossorigin="anonymous"
+  referrerpolicy="no-referrer"
+></script>
 
 <script defer type="module">
   import { bootstrap } from "./index.js";
   const engine = new URLSearchParams(window.location.search).get("engine");
-  bootstrap({
-    engine: engine || "js-custom-alloc",
-  });
+  bootstrap({ engine: engine || "js-custom-alloc" });
 </script>
 
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
-
 <main>
-  <canvas class="renderlayer" id="maincanvas"></canvas>
-  <pre class="renderlayer" id="infopanel"></pre>
+  <canvas class="render-layer" id="main-canvas"></canvas>
+  <div class="render-layer" id="panel-menu">
+    <pre id="panel-info"></pre>
+    <div id="panel-options"></div>
+  </div>
 </main>
 
 </body>

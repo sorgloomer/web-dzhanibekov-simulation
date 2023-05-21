@@ -1,3 +1,4 @@
+import { AbstractSimulation } from "./sim.base.js";
 import { quat, vec3 } from "./utils.three.js";
 
 let blazorStartPromise = undefined;
@@ -12,8 +13,9 @@ export async function createBlazorSimulation(params) {
   return new BlazorSimulation(params);
 }
 
-export class BlazorSimulation {
+export class BlazorSimulation extends AbstractSimulation {
   constructor(params) {
+    super();
     this._wasm = DotNet.invokeMethod("DotnetPhysics", "CreateSimulation", {
       dt: params.dt,
       correctionMaxIterations: params.correctionMaxIterations,
@@ -23,6 +25,7 @@ export class BlazorSimulation {
     const d = this._wasm.invokeMethod("Self");
 
     this.Angle = quat().copy(d.angle);
+    this.InitialAngle = params.initialAngle;
     this.AngularMomentum = vec3().copy(d.angularMomentum);
     this.InertiaTensor = vec3().copy(d.inertiaTensor);
     this.AngularVelocity = vec3();
@@ -45,5 +48,12 @@ export class BlazorSimulation {
     this.AngularVelocity.copy(d.angularVelocity);
     this.RotationalEnergy = d.originalEnergy;
     this.CurrentRotationalEnergy = d.currentEnergy;
+  }
+
+  destroy() {
+    if (this._wasm !== undefined) {
+      DotNet.invokeMethod("DotnetPhysics", "FreeSimulation", this._wasm);
+      this._wasm = undefined;
+    }
   }
 }

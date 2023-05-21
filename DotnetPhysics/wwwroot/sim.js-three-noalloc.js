@@ -1,9 +1,13 @@
+import { AbstractSimulation } from "./sim.base.js";
 import { sq } from "./utils.js";
 import { qFromEuler, qFromEulerScale, qNormalizeApprox, quat, vec3, vInvert, vSqrt } from "./utils.three.js";
 
-export class JsThreeNoallocSimulation {
+export class JsThreeNoallocSimulation extends AbstractSimulation {
   constructor(params) {
-    this.Angle = quat().setFromAxisAngle(vec3(0, 0, 1), params?.initialAngle ?? 2e-8);
+    super();
+    const initialAngle = params?.initialAngle ?? 2e-8;
+    this.Angle = quat().setFromAxisAngle(vec3(0, 0, 1), initialAngle);
+    this.InitialAngle = initialAngle;
     this.AngularMomentum = vec3(2, 0, 0);
     this.InertiaTensor = vec3(18, 6, 22).multiplyScalar(0.02);
     this.AngularVelocity = vec3();
