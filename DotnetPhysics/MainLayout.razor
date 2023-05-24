@@ -1,5 +1,21 @@
-﻿@inherits LayoutComponentBase
+﻿@using DotnetPhysics.namespaces.Simulation
 
-<main>
-  @Body
-</main>
+@inject IJSRuntime JSRuntime
+
+@code {
+
+
+  [JSInvokable]
+  public static object CreateSimulation(SimulationOptions options)
+  {
+    var simulation = new PrecessionSimulation(options);
+    return DotNetObjectReference.Create(simulation);
+  }
+
+  [JSInvokable]
+  public static void FreeSimulation(DotNetObjectReference<PrecessionSimulation> objectReference)
+  {
+    Console.WriteLine("PrecessionSimulation.free");
+    objectReference.Dispose();
+  }
+}

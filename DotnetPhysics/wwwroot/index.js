@@ -101,6 +101,7 @@ async function main({
   const gui = new Gui({
     parentDomElement: document.querySelector("#panel-options"),
     listeners: {
+      reset: () => { recreateSimulation().catch(console.error); },
       stability: () => { recreateSimulation().catch(console.error); },
       engine: () => { recreateSimulation().catch(console.error); },
       showEllipsoids: () => { syncOptions(); },
@@ -122,7 +123,9 @@ async function main({
   async function recreateSimulation() {
     if (simulation !== undefined) {
       simulation.destroy();
+      simulation = undefined;
     }
+    simulationTimer.implementation = simulation;
     const initialAngle = calculateInitialAngle(gui.model.stability / 100);
     simulation = await createEngine({
       engine: gui.model.engine,
@@ -138,8 +141,9 @@ async function main({
     visuals.ellipseL.scale.copy(simulation.EllipseL).multiplyScalar(MomentScale);
     visuals.ellipseE.scale.copy(simulation.EllipseE).multiplyScalar(MomentScale);
     visuals.arrowAngularMomentum.update({
-      target: vec3().copy(simulation.AngularMomentum).multiplyScalar(MomentScale),
+      target: visuals.turntable.localToWorld(vec3().copy(simulation.AngularMomentum).multiplyScalar(MomentScale)),
     });
+
     syncOptions();
   }
 
@@ -161,6 +165,9 @@ async function main({
   function updateInfoPanel() {
     fpsCounter.flush();
     stepCounter.flush(simulationTimer.stepCounter);
+    if (simulation === undefined) {
+      return;
+    }
     const infopanel = document.getElementById("panel-info");
     infopanel.textContent = ''
       + `render fps: ${fpsCounter.rate} /s\n`
@@ -182,6 +189,9 @@ async function main({
   const origin = vec3(0, 0, 0);
   animationFrames().subscribe(() => {
     fpsCounter.inc();
+    if (simulation === undefined) {
+      return;
+    }
     simulation.flush();
 
     visuals.subject.quaternion.copy(simulation.Angle);

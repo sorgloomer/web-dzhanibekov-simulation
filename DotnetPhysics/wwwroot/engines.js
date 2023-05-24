@@ -1,24 +1,28 @@
-﻿import { createBlazorSimulation } from "./sim.blazor.js";
-import { JsCustomAllocSimulation } from "./sim.js-custom-alloc.js";
-import { JsCustomNoallocSimulation } from "./sim.js-custom-noalloc.js";
-import { JsThreeAllocSimulation } from "./sim.js-three-alloc.js";
-import { JsThreeNoallocSimulation } from "./sim.js-three-noalloc.js";
-
-export async function createEngine({
+﻿export async function createEngine({
   engine,
   params,
 }) {
   switch (engine) {
-    case "blazor":
-      return await createBlazorSimulation(params);
-    case "js-three-noalloc":
-      return new JsThreeNoallocSimulation(params);
-    case "js-three-alloc":
-      return new JsThreeAllocSimulation(params);
-    case "js-custom-alloc":
-      return new JsCustomAllocSimulation(params);
-    case "js-custom-noalloc":
-      return new JsCustomNoallocSimulation(params);
+    case "blazor": {
+      const module = await import("./sim.blazor.js");
+      return await module.createBlazorSimulation(params);
+    }
+    case "js-three-noalloc": {
+      const module = await import("./sim.js-three-noalloc.js");
+      return new module.JsThreeNoallocSimulation(params);
+    }
+    case "js-three-alloc": {
+      const module = await import("./sim.js-three-alloc.js");
+      return new module.JsThreeAllocSimulation(params);
+    }
+    case "js-custom-alloc": {
+      const module = await import("./sim.js-custom-alloc.js");
+      return new module.JsCustomAllocSimulation(params);
+    }
+    case "js-custom-noalloc": {
+      const module = await import("./sim.js-custom-noalloc.js");
+      return new module.JsCustomNoallocSimulation(params);
+    }
     default:
       throw new Error(`Unknown engine: ${engine}`);
   }
@@ -38,6 +42,9 @@ export class SimulationTimer {
   }
 
   notify() {
+    if (this.implementation === undefined) {
+      return;
+    }
     const nowTime = Date.now();
     const lastTime = this._lastTime;
     this._lastTime = nowTime;
@@ -51,6 +58,10 @@ export class SimulationTimer {
   }
 
   _tick() {
+    if (this.implementation === undefined) {
+      this._stop();
+      return;
+    }
     try {
       if (this.unlocked) {
         const stepsDone = this.implementation.simulate(1e6, this._tickCutoffMs);

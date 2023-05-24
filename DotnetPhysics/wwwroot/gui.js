@@ -7,6 +7,7 @@
     this.datgui.useLocalStorage = true; // doesn't seem to work
     this._load();
 
+    this.datgui.add(this.model, "reset").name("Reset");
     this.datgui.add(this.model, "engine", [
       "blazor",
       "js-custom-alloc",
@@ -41,7 +42,6 @@
       .name("Benchmark")
       .onFinishChange(value => this._handleChange("benchmark", value))
     ;
-    this.dat
 
     parentDomElement.append(this.datgui.domElement);
   }
@@ -64,6 +64,7 @@
       showAxes: true,
       showVectors: true,
       benchmark: false,
+      reset: () => this._handleChange("reset", undefined),
     };
     try {
       const optstr = window?.localStorage?.getItem?.("options");
